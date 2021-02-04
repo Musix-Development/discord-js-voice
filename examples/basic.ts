@@ -1,6 +1,6 @@
 // todo
 
-import { Client, VoiceChannel } from 'discord.js';
+/*import { Client, VoiceChannel } from 'discord.js';
 import { joinVoiceChannel } from '../';
 import { getVoiceConnection } from '../dist/DataStore';
 import { createAudioPlayer } from '../dist/audio/AudioPlayer';
@@ -38,4 +38,4 @@ function connectToChannel(channel: VoiceChannel) {
 	voiceConnection.once('ready', () => {
 		player.playTo(voiceConnection);
 	});
-}
+}*/

@@ -35,7 +35,7 @@ export default function generateDependencyReport() {
 	try {
 		const info = FFmpeg.getInfo();
 		report.push(`- version: ${info.version}`);
-		report.push(`- libopus: ${info.output.includes('--enable-libopus') ? 'yes' : 'no'}`);
+		report.push(`- libopus: ${info.command.includes('--enable-libopus') ? 'yes' : 'no'}`);
 	} catch (err) {
 		report.push('- not found');
 	}
