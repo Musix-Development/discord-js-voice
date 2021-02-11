@@ -1,16 +1,17 @@
-import { findTransformerPipeline, StreamType, TransformerPathComponent } from './TransformerGraph';
+import { Edge, findPipeline, StreamType, TransformerType } from './TransformerGraph';
 import { pipeline, Readable } from 'stream';
 import { noop } from '../util/util';
-import { VolumeTransformer, opus } from 'prism-media';
+import { VolumeTransformer } from 'prism-media';
+import type { AudioPlayer } from './AudioPlayer';
 
 /**
  * Options that are set when creating a new audio resource.
  */
 interface CreateAudioResourceOptions {
 	/**
-	 * The type of the input stream.
+	 * The type of the input stream. Defaults to `StreamType.Arbitrary`.
 	 */
-	inputType: StreamType;
+	inputType?: StreamType;
 
 	/**
 	 * An optional name that can be attached to the resource. This could be a track title, song name etc.
@@ -20,7 +21,7 @@ interface CreateAudioResourceOptions {
 
 	/**
 	 * Whether or not inline volume should be enabled. If enabled, you will be able to change the volume
-	 * of the stream on-the-fly. However, this also increases the performance cost of playback.
+	 * of the stream on-the-fly. However, this also increases the performance cost of playback. Defaults to `false`.
 	 */
 	inlineVolume?: boolean;
 }
@@ -28,30 +29,49 @@ interface CreateAudioResourceOptions {
 /**
  * Represents an audio resource that can be played by an audio player.
  */
-export interface AudioResource {
+export class AudioResource {
 	/**
 	 * An object-mode Readable stream that emits Opus packets. This is what is played by audio players.
 	 */
-	playStream: Readable;
+	public readonly playStream: Readable;
 
 	/**
 	 * The pipeline used to convert the input stream into a playable format. For example, this may
 	 * contain an FFmpeg component for arbitrary inputs, and it may contain a VolumeTransformer component
 	 * for resources with inline volume transformation enabled.
 	 */
-	pipeline: TransformerPathComponent[];
+	public readonly pipeline: Edge[];
 
 	/**
 	 * An optional name that can be used to identify the resource.
 	 */
-	name?: string;
+	public name?: string;
 
 	/**
 	 * If the resource was created with inline volume transformation enabled, then this will be a
 	 * prism-media VolumeTransformer. You can use this to alter the volume of the stream.
 	 */
-	volume?: VolumeTransformer;
+	public readonly volume?: VolumeTransformer;
+
+	/**
+	 * The audio player that the resource is subscribed to, if any.
+	 */
+	public audioPlayer?: AudioPlayer;
+
+	public constructor(pipeline: Edge[], playStream: Readable, name?: string, volume?: VolumeTransformer) {
+		this.pipeline = pipeline;
+		this.playStream = playStream;
+		this.name = name;
+		this.volume = volume;
+	}
 }
+
+/**
+ * Ensures that a path contains at least one volume transforming component
+ *
+ * @param path The path to validate constraints on
+ */
+const VOLUME_CONSTRAINT = (path: Edge[]) => path.some((edge) => edge.type === TransformerType.InlineVolume);
 
 /**
  * Creates an audio resource that can be played be audio players.
@@ -65,81 +85,37 @@ export interface AudioResource {
  * @param input The resource to play.
  * @param options Configurable options for creating the resource.
  */
-export function createAudioResource(input: string|Readable, options: CreateAudioResourceOptions): AudioResource {
+export function createAudioResource(input: string | Readable, options: CreateAudioResourceOptions = {}): AudioResource {
+	let inputType = options.inputType ?? StreamType.Arbitrary;
+
 	// string inputs can only be used with FFmpeg
 	if (typeof input === 'string') {
-		options.inputType = StreamType.Arbitrary;
+		inputType = StreamType.Arbitrary;
 	}
 
-	const transformerPipeline = findTransformerPipeline(options.inputType);
-	if (!transformerPipeline) {
-		throw new Error(`Cannot create transcoder pipeline for stream type '${options.inputType}'`);
-	}
-
-	let volumeTransformer: VolumeTransformer|undefined;
-	if (options.inlineVolume) {
-		volumeTransformer = insertInlineVolumeTransformer(transformerPipeline);
-	}
+	const transformerPipeline = findPipeline(inputType, options.inlineVolume ? VOLUME_CONSTRAINT : () => true);
 
 	if (transformerPipeline.length === 0) {
 		if (typeof input === 'string') throw new Error(`Invalid pipeline constructed for string resource '${input}'`);
 		// No adjustments required
 		return {
 			playStream: input,
-			pipeline: []
+			pipeline: [],
 		};
 	}
-	const streams = [...transformerPipeline.map(pipe => pipe.transformer(input))];
+	const streams = transformerPipeline.map((pipe) => pipe.transformer(input));
 	if (typeof input !== 'string') streams.unshift(input);
 
 	// the callback is called once the stream ends
 	const playStream = pipeline(streams, noop);
-	// @types/node seems to be incorrect here - the output can still implement Readable
+
+	// attempt to find the volume transformer in the pipeline (if one exists)
+	const volume = streams.find((stream) => stream instanceof VolumeTransformer) as VolumeTransformer | undefined;
+
 	return {
 		playStream: (playStream as any) as Readable,
 		pipeline: transformerPipeline,
 		name: options.name,
-		volume: volumeTransformer
+		volume,
 	};
-}
-
-/**
- * Inserts a prism VolumeTransformer into a pipeline such that the volume of the audio can be altered on-the-fly.
- * @param transformerPipeline The pipeline to insert into
- */
-function insertInlineVolumeTransformer(transformerPipeline: TransformerPathComponent[]) {
-	const volumeTransformer = new VolumeTransformer({ type: 's16le', volume: 1 });
-	const transformer = {
-		from: StreamType.Raw,
-		to: StreamType.Raw,
-		cost: 0.5,
-		transformer: () => volumeTransformer
-	};
-
-	// The best insertion would be immediately after a Raw phase in the pipeline
-	for (let i = 0; i < transformerPipeline.length; i++) {
-		const component = transformerPipeline[i];
-		if (component.to === StreamType.Raw) {
-			transformerPipeline.splice(i + 1, 0, transformer);
-			return volumeTransformer;
-		}
-	}
-
-	// There is no Raw phase in the pipeline - need to decode final Opus phase, add VolumeTransformer, then reinsert an Opus encoder
-	transformerPipeline.push({
-		cost: 0.5,
-		from: StreamType.Opus,
-		to: StreamType.Raw,
-		transformer: () => new opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 })
-	});
-
-	transformerPipeline.push(transformer);
-
-	transformerPipeline.push({
-		cost: 0.5,
-		from: StreamType.Raw,
-		to: StreamType.Opus,
-		transformer: () => new opus.Encoder({ rate: 48000, channels: 2, frameSize: 960 })
-	});
-	return volumeTransformer;
 }
