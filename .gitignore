@@ -17,3 +17,9 @@ pids
 
 # Miscellaneous
 .tmp/
+
+# Coverage
+coverage/
+
+# Documentation
+docs/

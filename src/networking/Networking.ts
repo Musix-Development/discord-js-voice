@@ -1,16 +1,18 @@
-import { VoiceOPCodes } from 'discord-api-types/v8/gateway';
+import { VoiceOPCodes } from 'discord-api-types/voice/v4';
 import { EventEmitter } from 'events';
 import { VoiceUDPSocket } from './VoiceUDPSocket';
 import { VoiceWebSocket } from './VoiceWebSocket';
 import * as secretbox from '../util/Secretbox';
 import { noop } from '../util/util';
+import { CloseEvent } from 'ws';
+import TypedEmitter from 'typed-emitter';
 
 // The number of audio channels required by Discord
 const CHANNELS = 2;
 const TIMESTAMP_INC = (48000 / 100) * CHANNELS;
 const MAX_NONCE_SIZE = 2 ** 32 - 1;
 
-const SUPPORTED_ENCRYPTION_MODES = ['xsalsa20_poly1305_lite', 'xsalsa20_poly1305_suffix', 'xsalsa20_poly1305'];
+export const SUPPORTED_ENCRYPTION_MODES = ['xsalsa20_poly1305_lite', 'xsalsa20_poly1305_suffix', 'xsalsa20_poly1305'];
 
 /**
  * The different statuses that a networking instance can hold. The order
@@ -28,32 +30,92 @@ export enum NetworkingStatusCode {
 }
 
 /**
+ * The initial Networking state. Instances will be in this state when a WebSocket connection to a Discord
+ * voice gateway is being opened.
+ */
+export interface NetworkingOpeningWsState {
+	code: NetworkingStatusCode.OpeningWs;
+	ws: VoiceWebSocket;
+	connectionOptions: ConnectionOptions;
+}
+
+/**
+ * The state that a Networking instance will be in when it is attempting to authorize itself.
+ */
+export interface NetworkingIdentifyingState {
+	code: NetworkingStatusCode.Identifying;
+	ws: VoiceWebSocket;
+	connectionOptions: ConnectionOptions;
+}
+
+/**
+ * The state that a Networking instance will be in when opening a UDP connection to the IP and port provided
+ * by Discord, as well as performing IP discovery.
+ */
+export interface NetworkingUdpHandshakingState {
+	code: NetworkingStatusCode.UdpHandshaking;
+	ws: VoiceWebSocket;
+	udp: VoiceUDPSocket;
+	connectionOptions: ConnectionOptions;
+	connectionData: Pick<ConnectionData, 'ssrc'>;
+}
+
+/**
+ * The state that a Networking instance will be in when selecting an encryption protocol for audio packets.
+ */
+export interface NetworkingSelectingProtocolState {
+	code: NetworkingStatusCode.SelectingProtocol;
+	ws: VoiceWebSocket;
+	udp: VoiceUDPSocket;
+	connectionOptions: ConnectionOptions;
+	connectionData: Pick<ConnectionData, 'ssrc'>;
+}
+
+/**
+ * The state that a Networking instance will be in when it has a fully established connection to a Discord
+ * voice server.
+ */
+export interface NetworkingReadyState {
+	code: NetworkingStatusCode.Ready;
+	ws: VoiceWebSocket;
+	udp: VoiceUDPSocket;
+	connectionOptions: ConnectionOptions;
+	connectionData: ConnectionData;
+	preparedPacket?: Buffer;
+}
+
+/**
+ * The state that a Networking instance will be in when its connection has been dropped unexpectedly, and it
+ * is attempting to resume an existing session.
+ */
+export interface NetworkingResumingState {
+	code: NetworkingStatusCode.Resuming;
+	ws: VoiceWebSocket;
+	udp: VoiceUDPSocket;
+	connectionOptions: ConnectionOptions;
+	connectionData: ConnectionData;
+	preparedPacket?: Buffer;
+}
+
+/**
+ * The state that a Networking instance will be in when it has been destroyed. It cannot be recovered from this
+ * state.
+ */
+export interface NetworkingClosedState {
+	code: NetworkingStatusCode.Closed;
+}
+
+/**
  * The various states that a networking instance can be in.
  */
 export type NetworkingState =
-	| {
-			code: NetworkingStatusCode.OpeningWs | NetworkingStatusCode.Identifying;
-			ws: VoiceWebSocket;
-			connectionOptions: ConnectionOptions;
-	  }
-	| {
-			code: NetworkingStatusCode.UdpHandshaking | NetworkingStatusCode.SelectingProtocol;
-			ws: VoiceWebSocket;
-			udp: VoiceUDPSocket;
-			connectionOptions: ConnectionOptions;
-			connectionData: Pick<ConnectionData, 'ssrc'>;
-	  }
-	| {
-			code: NetworkingStatusCode.Ready | NetworkingStatusCode.Resuming;
-			ws: VoiceWebSocket;
-			udp: VoiceUDPSocket;
-			connectionOptions: ConnectionOptions;
-			connectionData: ConnectionData;
-			preparedPacket?: Buffer;
-	  }
-	| {
-			code: NetworkingStatusCode.Closed;
-	  };
+	| NetworkingOpeningWsState
+	| NetworkingIdentifyingState
+	| NetworkingUdpHandshakingState
+	| NetworkingSelectingProtocolState
+	| NetworkingReadyState
+	| NetworkingResumingState
+	| NetworkingClosedState;
 
 /**
  * Details required to connect to the Discord voice gateway. These details
@@ -72,12 +134,13 @@ interface ConnectionOptions {
  * Information about the current connection, e.g. which encryption mode is to be used on
  * the connection, timing information for playback of streams.
  */
-interface ConnectionData {
+export interface ConnectionData {
 	ssrc: number;
 	encryptionMode: string;
 	secretKey: Uint8Array;
 	sequence: number;
 	timestamp: number;
+	packetsPlayed: number;
 	nonce: number;
 	nonceBuffer: Buffer;
 	speaking: boolean;
@@ -88,10 +151,17 @@ interface ConnectionData {
  */
 const nonce = Buffer.alloc(24);
 
+export interface NetworkingEvents {
+	debug: (message: string) => void;
+	error: (error: Error) => void;
+	stateChange: (oldState: NetworkingState, newState: NetworkingState) => void;
+	close: (code: number) => void;
+}
+
 /**
  * Manages the networking required to maintain a voice connection and dispatch audio packets
  */
-export class Networking extends EventEmitter {
+export class Networking extends (EventEmitter as new () => TypedEmitter<NetworkingEvents>) {
 	private _state: NetworkingState;
 
 	/**
@@ -110,8 +180,10 @@ export class Networking extends EventEmitter {
 		this.onWsPacket = this.onWsPacket.bind(this);
 		this.onWsClose = this.onWsClose.bind(this);
 		this.onWsDebug = this.onWsDebug.bind(this);
+		this.onUdpDebug = this.onUdpDebug.bind(this);
+		this.onUdpClose = this.onUdpClose.bind(this);
 
-		this.debug = debug ? this.emit.bind(this, 'debug') : null;
+		this.debug = debug ? (message: string) => this.emit('debug', message) : null;
 
 		this._state = {
 			code: NetworkingStatusCode.OpeningWs,
@@ -159,6 +231,8 @@ export class Networking extends EventEmitter {
 		if (oldUdp && oldUdp !== newUdp) {
 			oldUdp.on('error', noop);
 			oldUdp.off('error', this.onChildError);
+			oldUdp.off('close', this.onUdpClose);
+			oldUdp.off('debug', this.onUdpDebug);
 			oldUdp.destroy();
 		}
 
@@ -178,8 +252,8 @@ export class Networking extends EventEmitter {
 	/**
 	 * Creates a new WebSocket to a Discord Voice gateway.
 	 *
-	 * @param endpoint The endpoint to connect to
-	 * @param debug Whether to enable debug logging
+	 * @param endpoint - The endpoint to connect to
+	 * @param debug - Whether to enable debug logging
 	 */
 	private createWebSocket(endpoint: string) {
 		const ws = new VoiceWebSocket(`wss://${endpoint}?v=4`, Boolean(this.debug));
@@ -196,7 +270,7 @@ export class Networking extends EventEmitter {
 	/**
 	 * Propagates errors from the children VoiceWebSocket and VoiceUDPSocket.
 	 *
-	 * @param error The error that was emitted by a child
+	 * @param error - The error that was emitted by a child
 	 */
 	private onChildError(error: Error) {
 		this.emit('error', error);
@@ -240,9 +314,9 @@ export class Networking extends EventEmitter {
 	 * the instance will either attempt to resume, or enter the closed state and emit a 'close' event
 	 * with the close code, allowing the user to decide whether or not they would like to reconnect.
 	 *
-	 * @param code The close code
+	 * @param code - The close code
 	 */
-	private onWsClose(code: number) {
+	private onWsClose({ code }: CloseEvent) {
 		const canResume = code === 4015 || code < 4000;
 		if (canResume && this.state.code === NetworkingStatusCode.Ready) {
 			this.state = {
@@ -257,8 +331,21 @@ export class Networking extends EventEmitter {
 	}
 
 	/**
+	 * Called when the UDP socket has closed itself if it has stopped receiving replies from Discord
+	 */
+	private onUdpClose() {
+		if (this.state.code === NetworkingStatusCode.Ready) {
+			this.state = {
+				...this.state,
+				code: NetworkingStatusCode.Resuming,
+				ws: this.createWebSocket(this.state.connectionOptions.endpoint),
+			};
+		}
+	}
+
+	/**
 	 * Called when a packet is received on the connection's WebSocket
-	 * @param packet The received packet
+	 * @param packet - The received packet
 	 */
 	private onWsPacket(packet: any) {
 		if (packet.op === VoiceOPCodes.Hello && this.state.code !== NetworkingStatusCode.Closed) {
@@ -268,6 +355,8 @@ export class Networking extends EventEmitter {
 
 			const udp = new VoiceUDPSocket({ ip, port });
 			udp.on('error', this.onChildError);
+			udp.on('debug', this.onUdpDebug);
+			udp.once('close', this.onUdpClose);
 			udp
 				.performIPDiscovery(ssrc)
 				.then((localConfig) => {
@@ -315,6 +404,7 @@ export class Networking extends EventEmitter {
 					nonce: 0,
 					nonceBuffer: Buffer.alloc(24),
 					speaking: false,
+					packetsPlayed: 0,
 				},
 			};
 		} else if (packet.op === VoiceOPCodes.Resumed && this.state.code === NetworkingStatusCode.Resuming) {
@@ -329,20 +419,30 @@ export class Networking extends EventEmitter {
 	/**
 	 * Propagates debug messages from the child WebSocket.
 	 *
-	 * @param message The emitted debug message
+	 * @param message - The emitted debug message
 	 */
 	private onWsDebug(message: string) {
 		this.debug?.(`[WS] ${message}`);
 	}
 
 	/**
+	 * Propagates debug messages from the child UDPSocket.
+	 *
+	 * @param message - The emitted debug message
+	 */
+	private onUdpDebug(message: string) {
+		this.debug?.(`[UDP] ${message}`);
+	}
+
+	/**
 	 * Prepares an Opus packet for playback. This includes attaching metadata to it and encrypting it.
 	 * It will be stored within the instance, and can be played by dispatchAudio().
 	 *
+	 * @remarks
 	 * Calling this method while there is already a prepared audio packet that has not yet been dispatched
 	 * will overwrite the existing audio packet. This should be avoided.
 	 *
-	 * @param opusPacket The Opus packet to encrypt
+	 * @param opusPacket - The Opus packet to encrypt
 	 *
 	 * @returns The audio packet that was prepared.
 	 */
@@ -371,12 +471,13 @@ export class Networking extends EventEmitter {
 	/**
 	 * Plays an audio packet, updating timing metadata used for playback.
 	 *
-	 * @param audioPacket The audio packet to play
+	 * @param audioPacket - The audio packet to play
 	 */
 	private playAudioPacket(audioPacket: Buffer) {
 		const state = this.state;
 		if (state.code !== NetworkingStatusCode.Ready) return;
 		const { connectionData } = state;
+		connectionData.packetsPlayed++;
 		connectionData.sequence++;
 		connectionData.timestamp += TIMESTAMP_INC;
 		if (connectionData.sequence >= 2 ** 16) connectionData.sequence = 0;
@@ -389,7 +490,7 @@ export class Networking extends EventEmitter {
 	 * Sends a packet to the voice gateway indicating that the client has start/stopped sending
 	 * audio.
 	 *
-	 * @param speaking Whether or not the client should be shown as speaking
+	 * @param speaking - Whether or not the client should be shown as speaking
 	 */
 	public setSpeaking(speaking: boolean) {
 		const state = this.state;
@@ -410,8 +511,8 @@ export class Networking extends EventEmitter {
 	 * Creates a new audio packet from an Opus packet. This involves encrypting the packet,
 	 * then prepending a header that includes metadata.
 	 *
-	 * @param opusPacket The Opus packet to prepare
-	 * @param connectionData The current connection data of the instance
+	 * @param opusPacket - The Opus packet to prepare
+	 * @param connectionData - The current connection data of the instance
 	 */
 	private createAudioPacket(opusPacket: Buffer, connectionData: ConnectionData) {
 		const packetBuffer = Buffer.alloc(12);
@@ -431,8 +532,8 @@ export class Networking extends EventEmitter {
 	/**
 	 * Encrypts an Opus packet using the format agreed upon by the instance and Discord.
 	 *
-	 * @param opusPacket The Opus packet to encrypt
-	 * @param connectionData The current connection data of the instance
+	 * @param opusPacket - The Opus packet to encrypt
+	 * @param connectionData - The current connection data of the instance
 	 */
 	private encryptOpusPacket(opusPacket: Buffer, connectionData: ConnectionData) {
 		const { secretKey, encryptionMode } = connectionData;
@@ -456,7 +557,7 @@ export class Networking extends EventEmitter {
 /**
  * Returns a random number that is in the range of n bits.
  *
- * @param n The number of bits
+ * @param n - The number of bits
  */
 function randomNBit(n: number) {
 	return Math.floor(Math.random() * 2 ** n);
@@ -465,7 +566,7 @@ function randomNBit(n: number) {
 /**
  * Stringifies a NetworkingState
  *
- * @param state The state to stringify
+ * @param state - The state to stringify
  */
 function stringifyState(state: NetworkingState) {
 	return JSON.stringify({
@@ -478,7 +579,7 @@ function stringifyState(state: NetworkingState) {
 /**
  * Chooses an encryption mode from a list of given options. Chooses the most preferred option.
  *
- * @param options The available encryption options
+ * @param options - The available encryption options
  */
 function chooseEncryptionMode(options: string[]): string {
 	const option = options.find((option) => SUPPORTED_ENCRYPTION_MODES.includes(option));

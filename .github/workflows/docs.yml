@@ -1,8 +1,8 @@
-name: Tests
-on: [push, pull_request]
+name: Documentation
+on: [push]
 jobs:
-  test:
-    name: Test
+  docs:
+    name: Documentation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -16,8 +16,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Tests
-        run: npm run test:ci
+      - name: Build documentation
+        run: npm run docs
 
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v1
+      - name: Deploy documentation
+        uses: JamesIves/github-pages-deploy-action@4.1.0
+        with:
+          branch: gh-pages
+          folder: docs

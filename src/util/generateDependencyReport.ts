@@ -4,16 +4,15 @@ import { resolve, dirname } from 'path';
 import { FFmpeg } from 'prism-media';
 
 /**
- * Generates a report of the dependencies used by the @discordjs/voice module.
+ * Generates a report of the dependencies used by the \@discordjs/voice module.
  * Useful for debugging.
  */
-export default function generateDependencyReport() {
+export function generateDependencyReport() {
 	const report = [];
 	const addVersion = (name: string) => report.push(`- ${name}: ${version(name)}`);
 	// general
 	report.push('Core Dependencies');
 	addVersion('@discordjs/voice');
-	addVersion('discord.js');
 	addVersion('prism-media');
 	report.push('');
 
@@ -46,9 +45,9 @@ export default function generateDependencyReport() {
 /**
  * Tries to find the package.json file for a given module.
  *
- * @param dir The directory to look in
- * @param packageName The name of the package to look for
- * @param depth The maximum recursion depth
+ * @param dir - The directory to look in
+ * @param packageName - The name of the package to look for
+ * @param depth - The maximum recursion depth
  */
 function findPackageJSON(
 	dir: string,
@@ -69,7 +68,7 @@ function findPackageJSON(
 /**
  * Tries to find the version of a dependency.
  *
- * @param name The package to find the version of
+ * @param name - The package to find the version of
  */
 function version(name: string): string {
 	try {

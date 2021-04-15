@@ -11,10 +11,12 @@
 		"inlineSources": true,
 		"module": "commonjs",
 		"declaration": true,
+		"declarationMap": true,
 		"outDir": "dist",
 		"incremental": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/**/__tests__"]
 }
