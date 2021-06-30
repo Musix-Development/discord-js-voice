@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>VoiceConnectionReadyState | @discordjs/voice</title>
+	<title>VoiceConnectionDisconnectedBaseState | @discordjs/voice</title>
 	<meta name="description" content="Documentation for @discordjs/voice">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -55,10 +55,10 @@
 					<a href="../modules.html">@discordjs/voice</a>
 				</li>
 				<li>
-					<a href="voiceconnectionreadystate.html">VoiceConnectionReadyState</a>
+					<a href="voiceconnectiondisconnectedbasestate.html">VoiceConnectionDisconnectedBaseState</a>
 				</li>
 			</ul>
-			<h1>Interface VoiceConnectionReadyState</h1>
+			<h1>Interface VoiceConnectionDisconnectedBaseState</h1>
 		</div>
 	</div>
 </header>
@@ -68,8 +68,8 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>The state that a VoiceConnection will be in when it has an active connection to a Discord
-						voice server.</p>
+						<p>The state that a VoiceConnection will be in when it is not connected to a Discord voice server nor is
+						it attempting to connect. You can manually attempt to reconnect using VoiceConnection#reconnect.</p>
 					</div>
 				</div>
 			</section>
@@ -77,7 +77,15 @@
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">VoiceConnectionReadyState</span>
+						<span class="target">VoiceConnectionDisconnectedBaseState</span>
+						<ul class="tsd-hierarchy">
+							<li>
+								<a href="voiceconnectiondisconnectedotherstate.html" class="tsd-signature-type" data-tsd-kind="Interface">VoiceConnectionDisconnectedOtherState</a>
+							</li>
+							<li>
+								<a href="voiceconnectiondisconnectedwebsocketstate.html" class="tsd-signature-type" data-tsd-kind="Interface">VoiceConnectionDisconnectedWebSocketState</a>
+							</li>
+						</ul>
 					</li>
 				</ul>
 			</section>
@@ -88,10 +96,9 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="voiceconnectionreadystate.html#adapter" class="tsd-kind-icon">adapter</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="voiceconnectionreadystate.html#networking" class="tsd-kind-icon">networking</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="voiceconnectionreadystate.html#status" class="tsd-kind-icon">status</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="voiceconnectionreadystate.html#subscription" class="tsd-kind-icon">subscription</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="voiceconnectiondisconnectedbasestate.html#adapter" class="tsd-kind-icon">adapter</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="voiceconnectiondisconnectedbasestate.html#status" class="tsd-kind-icon">status</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="voiceconnectiondisconnectedbasestate.html#subscription" class="tsd-kind-icon">subscription</a></li>
 							</ul>
 						</section>
 					</div>
@@ -105,27 +112,17 @@
 					<div class="tsd-signature tsd-kind-icon">adapter<span class="tsd-signature-symbol">:</span> <a href="discordgatewayadapterimplementermethods.html" class="tsd-signature-type" data-tsd-kind="Interface">DiscordGatewayAdapterImplementerMethods</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/Musix-Development/discord-js-voice/blob/36aad8d/src/VoiceConnection.ts#L132">src/VoiceConnection.ts:132</a></li>
-						</ul>
-					</aside>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="networking" class="tsd-anchor"></a>
-					<h3>networking</h3>
-					<div class="tsd-signature tsd-kind-icon">networking<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Networking</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/Musix-Development/discord-js-voice/blob/36aad8d/src/VoiceConnection.ts#L130">src/VoiceConnection.ts:130</a></li>
+							<li>Defined in <a href="https://github.com/Musix-Development/discord-js-voice/blob/36aad8d/src/VoiceConnection.ts#L82">src/VoiceConnection.ts:82</a></li>
 						</ul>
 					</aside>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="status" class="tsd-anchor"></a>
 					<h3>status</h3>
-					<div class="tsd-signature tsd-kind-icon">status<span class="tsd-signature-symbol">:</span> <a href="../enums/voiceconnectionstatus.html#ready" class="tsd-signature-type" data-tsd-kind="Enumeration member">Ready</a></div>
+					<div class="tsd-signature tsd-kind-icon">status<span class="tsd-signature-symbol">:</span> <a href="../enums/voiceconnectionstatus.html#disconnected" class="tsd-signature-type" data-tsd-kind="Enumeration member">Disconnected</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/Musix-Development/discord-js-voice/blob/36aad8d/src/VoiceConnection.ts#L129">src/VoiceConnection.ts:129</a></li>
+							<li>Defined in <a href="https://github.com/Musix-Development/discord-js-voice/blob/36aad8d/src/VoiceConnection.ts#L80">src/VoiceConnection.ts:80</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -135,7 +132,7 @@
 					<div class="tsd-signature tsd-kind-icon">subscription<span class="tsd-signature-symbol">:</span> <a href="../classes/playersubscription.html" class="tsd-signature-type" data-tsd-kind="Class">PlayerSubscription</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/Musix-Development/discord-js-voice/blob/36aad8d/src/VoiceConnection.ts#L131">src/VoiceConnection.ts:131</a></li>
+							<li>Defined in <a href="https://github.com/Musix-Development/discord-js-voice/blob/36aad8d/src/VoiceConnection.ts#L81">src/VoiceConnection.ts:81</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -154,19 +151,16 @@
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-interface">
-						<a href="voiceconnectionreadystate.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Ready<wbr>State</a>
+						<a href="voiceconnectiondisconnectedbasestate.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Disconnected<wbr>Base<wbr>State</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="voiceconnectionreadystate.html#adapter" class="tsd-kind-icon">adapter</a>
+								<a href="voiceconnectiondisconnectedbasestate.html#adapter" class="tsd-kind-icon">adapter</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="voiceconnectionreadystate.html#networking" class="tsd-kind-icon">networking</a>
+								<a href="voiceconnectiondisconnectedbasestate.html#status" class="tsd-kind-icon">status</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="voiceconnectionreadystate.html#status" class="tsd-kind-icon">status</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="voiceconnectionreadystate.html#subscription" class="tsd-kind-icon">subscription</a>
+								<a href="voiceconnectiondisconnectedbasestate.html#subscription" class="tsd-kind-icon">subscription</a>
 							</li>
 						</ul>
 					</li>

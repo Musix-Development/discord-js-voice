@@ -62,22 +62,33 @@
 					<h1>@discordjs/voice</h1>
 				</a>
 				<p>
-					<a href="https://discord.gg/bRCvFy9"><img src="https://img.shields.io/discord/222078108977594368?color=7289da&logo=discord&logoColor=white" alt="Discord server" /></a>
+					<a href="https://discord.gg/bRCvFy9"><img src="https://img.shields.io/discord/222078108977594368?color=5865F2&logo=discord&logoColor=white" alt="Discord server" /></a>
 					<a href="https://www.npmjs.com/package/@discordjs/voice"><img src="https://img.shields.io/npm/v/@discordjs/voice.svg?maxAge=3600" alt="NPM version" /></a>
 					<a href="https://www.npmjs.com/package/@discordjs/voice"><img src="https://img.shields.io/npm/dt/@discordjs/voice.svg?maxAge=3600" alt="NPM downloads" /></a>
 					<a href="https://github.com/discordjs/voice/actions"><img src="https://github.com/discordjs/voice/actions/workflows/test.yml/badge.svg" alt="Build status" /></a>
 					<a href="https://codecov.io/gh/discordjs/voice"><img src="https://codecov.io/gh/discordjs/voice/branch/main/graph/badge.svg?token=u7oQ23UoxX" alt="Test coverage"/></a>
 					<a href="https://www.patreon.com/discordjs"><img src="https://img.shields.io/badge/donate-patreon-F96854.svg" alt="Patreon" /></a>
 				</p>
-				<blockquote>
-					<p>Provides audio streaming functionality to Discord.js</p>
-				</blockquote>
-				<a href="#status-alpha" id="status-alpha" style="color: inherit; text-decoration: none;">
-					<h2>Status: alpha</h2>
+				<a href="#about" id="about" style="color: inherit; text-decoration: none;">
+					<h2>About</h2>
 				</a>
-				<blockquote>
-					<p>This library is still in development - the API is subject to change!</p>
-				</blockquote>
+				<p>An implementation of the Discord Voice API for Node.js, written in TypeScript.</p>
+				<p><strong>Features:</strong></p>
+				<ul>
+					<li>Send and receive* audio in Discord voice-based channels</li>
+					<li>A strong focus on reliability and predictable behaviour</li>
+					<li>Horizontal scalability and libraries other than <a href="https://discord.js.org/">discord.js</a> are supported with custom adapters</li>
+					<li>A robust audio processing system that can handle a wide range of audio sources</li>
+				</ul>
+				<p>*<em>Audio receive is not documented by Discord so stable support is not guaranteed</em></p>
+				<p><strong>Useful links:</strong></p>
+				<ul>
+					<li><a href="https://discordjs.github.io/voice">Documentation</a></li>
+					<li><a href="https://github.com/discordjs/voice/tree/main/examples">Examples</a></li>
+					<li><a href="https://github.com/discordjs/voice/discussions">GitHub Discussions</a></li>
+					<li><a href="https://discord.gg/djs">Discord.js Server</a></li>
+					<li><a href="https://github.com/discordjs/voice">Repository</a></li>
+				</ul>
 				<a href="#dependencies" id="dependencies" style="color: inherit; text-decoration: none;">
 					<h2>Dependencies</h2>
 				</a>
@@ -126,6 +137,9 @@
 					</li>
 					<li class=" tsd-kind-enum">
 						<a href="enums/streamtype.html" class="tsd-kind-icon">Stream<wbr>Type</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/voiceconnectiondisconnectreason.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Disconnect<wbr>Reason</a>
 					</li>
 					<li class=" tsd-kind-enum">
 						<a href="enums/voiceconnectionstatus.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Status</a>
@@ -182,6 +196,9 @@
 						<a href="interfaces/joinvoicechanneloptions.html" class="tsd-kind-icon">Join<wbr>Voice<wbr>Channel<wbr>Options</a>
 					</li>
 					<li class=" tsd-kind-interface">
+						<a href="interfaces/probeinfo.html" class="tsd-kind-icon">Probe<wbr>Info</a>
+					</li>
+					<li class=" tsd-kind-interface">
 						<a href="interfaces/ssrcmapevents.html" class="tsd-kind-icon">SSRCMap<wbr>Events</a>
 					</li>
 					<li class=" tsd-kind-interface">
@@ -191,7 +208,13 @@
 						<a href="interfaces/voiceconnectiondestroyedstate.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Destroyed<wbr>State</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/voiceconnectiondisconnectedstate.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Disconnected<wbr>State</a>
+						<a href="interfaces/voiceconnectiondisconnectedbasestate.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Disconnected<wbr>Base<wbr>State</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/voiceconnectiondisconnectedotherstate.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Disconnected<wbr>Other<wbr>State</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/voiceconnectiondisconnectedwebsocketstate.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Disconnected<wbr>Web<wbr>Socket<wbr>State</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/voiceconnectionreadystate.html" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Ready<wbr>State</a>
@@ -212,6 +235,9 @@
 						<a href="modules.html#discordgatewayadaptercreator" class="tsd-kind-icon">Discord<wbr>Gateway<wbr>Adapter<wbr>Creator</a>
 					</li>
 					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#voiceconnectiondisconnectedstate" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Disconnected<wbr>State</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
 						<a href="modules.html#voiceconnectionevents" class="tsd-kind-icon">Voice<wbr>Connection<wbr>Events</a>
 					</li>
 					<li class=" tsd-kind-type-alias">
@@ -227,6 +253,9 @@
 						<a href="modules.html#createvoicereceiver" class="tsd-kind-icon">create<wbr>Voice<wbr>Receiver</a>
 					</li>
 					<li class=" tsd-kind-function">
+						<a href="modules.html#demuxprobe" class="tsd-kind-icon">demux<wbr>Probe</a>
+					</li>
+					<li class=" tsd-kind-function">
 						<a href="modules.html#entersstate" class="tsd-kind-icon">enters<wbr>State</a>
 					</li>
 					<li class=" tsd-kind-function">
@@ -237,6 +266,9 @@
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="modules.html#joinvoicechannel" class="tsd-kind-icon">join<wbr>Voice<wbr>Channel</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#validatediscordopushead" class="tsd-kind-icon">validate<wbr>Discord<wbr>Opus<wbr>Head</a>
 					</li>
 				</ul>
 			</nav>
